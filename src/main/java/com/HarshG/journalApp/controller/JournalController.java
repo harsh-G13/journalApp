@@ -69,8 +69,8 @@ class JournalController {
         return journalService.editJournalById(id, journalEntry);
     }
 
-    @DeleteMapping("/id/{id}")
-    public ResponseEntity<?> deleteJournalById(@PathVariable String id) {
-        return journalService.deleteJournalById(id);
+    @DeleteMapping("/{userName}/{id}")
+    public ResponseEntity<?> deleteJournalById(@PathVariable String id,@PathVariable String userName) {
+        return journalService.deleteJournalById(id,userName);
     }
 }

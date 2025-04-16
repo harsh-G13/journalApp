@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,24 +31,28 @@ public class JournalService {
         } else return new ResponseEntity<>("No Data found", HttpStatus.NOT_FOUND);
     }
 
+    @Transactional
     public ResponseEntity<?> createJournal(String userName, JournalEntry journalEntry) {
         try {
-            JournalEntry savedEntry = journalRepository.save(journalEntry);
             User user = userRepository.findByUsername(userName);
-            if (user != null) {
-                List<JournalEntry> entries = user.getJournalsEntries();
-                entries.add(savedEntry);
-                user.setJournalsEntries(entries);
-                userRepository.save(user);
-                return new ResponseEntity<>(savedEntry, HttpStatus.CREATED);
-            } else {
-                return new ResponseEntity<>("Invalid username", HttpStatus.BAD_REQUEST);
+            if (user == null) {
+                throw new IllegalArgumentException("Invalid username");
             }
 
-        } catch (Exception e) {
-            return new ResponseEntity<>("Error occurred: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+            JournalEntry savedEntry = journalRepository.save(journalEntry);
+            List<JournalEntry> entries = user.getJournalsEntries();
+            entries.add(savedEntry);
+            user.setJournalsEntries(entries);
+            userRepository.save(user);
 
+            return new ResponseEntity<>(savedEntry, HttpStatus.CREATED);
+
+        }catch (IllegalArgumentException ex){
+            throw new IllegalArgumentException(ex.getMessage());
+        }
+        catch (Exception e) {
+            throw new RuntimeException("An error occurred while saving the entry", e);
+        }
     }
 
     public ResponseEntity<?> createMultipleJournal(List<JournalEntry> journalEntries) {
@@ -92,12 +97,13 @@ public class JournalService {
         }
     }
 
-    public ResponseEntity<?> deleteJournalById(String id) {
+    public ResponseEntity<?> deleteJournalById(String id,String userName) {
         try {
             if (!journalRepository.existsById(id)) {
                 return new ResponseEntity<>("Journal entry not found for ID: " + id, HttpStatus.NOT_FOUND);
             }
-
+            User user  = userRepository.findByUsername(userName);
+            user.getJournalsEntries().removeIf(x-> x.getId().equals(id));
             journalRepository.deleteById(id);
             return new ResponseEntity<>("Deleted Successfully", HttpStatus.OK);
         } catch (Exception e) {
